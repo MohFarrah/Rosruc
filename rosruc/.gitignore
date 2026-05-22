@@ -1,0 +1,27 @@
+# Local environment files
+.env
+.env.*
+!.env.example
+
+# Node dependencies and build output
+node_modules/
+frontend/dist/
+.vite/
+
+# Python local state
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# SQLite and runtime data
+backend/data/*
+!backend/data/.gitkeep
+*.db
+*.db-journal
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
+npm-debug.log*

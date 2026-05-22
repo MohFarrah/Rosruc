@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI Workflow Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "summary", "logs", "report"],
+  "properties": {
+    "status": {
+      "type": "string"
+    },
+    "summary": {
+      "type": "string"
+    },
+    "logs": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "report": {
+      "$ref": "#/$defs/report"
+    }
+  },
+  "$defs": {
+    "report": {
+      "title": "Developer Report",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "summary",
+        "reproductionNotes",
+        "testNotes",
+        "nextSteps"
+      ],
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "generatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "reproductionNotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "testNotes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "nextSteps": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
