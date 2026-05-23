@@ -59,3 +59,39 @@ export interface AggregateSavings {
   runs_count: number
   sparkline: number[]
 }
+
+export type OptimizationStrategy =
+  | 'layer_cache'
+  | 'multi_stage_slim'
+  | 'parallel_buildkit'
+
+export type OptimizationInterval =
+  | '30m'
+  | '45m'
+  | '1h'
+  | '2h'
+  | 'manual'
+
+export type ComputePower = 'cpu' | 'gpu'
+
+export interface OptimizationPreferences {
+  auto_mode: boolean
+  strategy: OptimizationStrategy
+  interval: OptimizationInterval
+  compute_power: ComputePower
+}
+
+export interface SavingsComparison {
+  baseline_minutes: number
+  optimized_minutes: number
+  minutes_saved: number
+  hours_saved: number
+  dollars_saved: number
+}
+
+export interface SubmitPreferencesResponse {
+  ok: boolean
+  message?: string
+  execution_id?: string
+  savings?: SavingsComparison
+}

@@ -33,6 +33,9 @@ dist/
 # IDE / OS
 .idea/
 .vscode/
+# Cursor IDE (agent chats, plans, local config)
+.cursor
+.cursor/
 *.swp
 *.swo
 .DS_Store
