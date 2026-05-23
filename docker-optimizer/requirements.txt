@@ -1,0 +1,15 @@
+# AI Agents (Google Gemini)
+google-generativeai
+
+# UI & Formatting
+rich
+
+# Act 3: Hot-Swap Watcher
+watchdog
+
+# API & Web Server
+fastapi
+uvicorn
+
+# Utilities
+python-multipart
