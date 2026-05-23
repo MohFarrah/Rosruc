@@ -1,0 +1,15 @@
+# examples/Dockerfile.messy
+FROM python:3.9
+
+# This is bad: Installing dev tools into the final image
+RUN apt-get update && apt-get install -y gcc git
+
+WORKDIR /app
+
+# This is bad: Copying everything before installing requirements
+COPY . .
+
+# This is bad: No caching optimization
+RUN pip install -r requirements.txt
+
+CMD ["python", "app.py"]
