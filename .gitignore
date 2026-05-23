@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+.venv/
+venv/
+ENV/
+
+# SQLite
+*.db
+*.db-journal
+
+# Node
+node_modules/
+dist/
+.vite/
+*.local
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# IDE / OS
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Note: optimizer/ai/cache/ is intentionally NOT ignored — committed cache files are the demo reliability fallback

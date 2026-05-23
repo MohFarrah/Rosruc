@@ -1,0 +1,100 @@
+{
+  "services": [
+    {
+      "name": "payments",
+      "description": "Handles charge, refund, retry, and reconciliation flows.",
+      "paths": ["services/payments/"],
+      "test_suites": ["payments.unit", "payments.integration"],
+      "depends_on": ["ledger"],
+      "consumed_by": ["notifications", "ledger"],
+      "baseline_build_seconds": 95,
+      "baseline_test_seconds": 220,
+      "dockerfile": "services/payments/Dockerfile",
+      "graph_pos": { "x": 400, "y": 200 }
+    },
+    {
+      "name": "auth",
+      "description": "Login, sessions, and 2FA.",
+      "paths": ["services/auth/"],
+      "test_suites": ["auth.integration"],
+      "depends_on": [],
+      "consumed_by": ["frontend-web", "frontend-mobile"],
+      "baseline_build_seconds": 70,
+      "baseline_test_seconds": 180,
+      "dockerfile": "services/auth/Dockerfile",
+      "graph_pos": { "x": 100, "y": 100 }
+    },
+    {
+      "name": "notifications",
+      "description": "Email, SMS, and push fanout.",
+      "paths": ["services/notifications/"],
+      "test_suites": ["notifications.unit"],
+      "depends_on": ["payments"],
+      "consumed_by": [],
+      "baseline_build_seconds": 60,
+      "baseline_test_seconds": 140,
+      "dockerfile": "services/notifications/Dockerfile",
+      "graph_pos": { "x": 650, "y": 120 }
+    },
+    {
+      "name": "ledger",
+      "description": "Double-entry accounting and reconciliation.",
+      "paths": ["services/ledger/"],
+      "test_suites": ["ledger.integration"],
+      "depends_on": ["payments"],
+      "consumed_by": [],
+      "baseline_build_seconds": 85,
+      "baseline_test_seconds": 200,
+      "dockerfile": "services/ledger/Dockerfile",
+      "graph_pos": { "x": 650, "y": 280 }
+    },
+    {
+      "name": "ml-recommender",
+      "description": "Fraud risk scoring and product recommendations.",
+      "paths": ["services/ml-recommender/"],
+      "test_suites": ["ml.smoke"],
+      "depends_on": [],
+      "consumed_by": ["frontend-web"],
+      "baseline_build_seconds": 120,
+      "baseline_test_seconds": 300,
+      "dockerfile": "services/ml-recommender/Dockerfile",
+      "graph_pos": { "x": 100, "y": 320 }
+    },
+    {
+      "name": "frontend-web",
+      "description": "Next.js merchant dashboard.",
+      "paths": ["services/frontend-web/"],
+      "test_suites": ["frontend.unit", "frontend.e2e"],
+      "depends_on": ["auth"],
+      "consumed_by": [],
+      "baseline_build_seconds": 110,
+      "baseline_test_seconds": 420,
+      "dockerfile": "services/frontend-web/Dockerfile",
+      "graph_pos": { "x": 250, "y": 420 }
+    },
+    {
+      "name": "frontend-mobile",
+      "description": "React Native consumer app.",
+      "paths": ["services/frontend-mobile/"],
+      "test_suites": ["mobile.unit"],
+      "depends_on": ["auth"],
+      "consumed_by": [],
+      "baseline_build_seconds": 100,
+      "baseline_test_seconds": 360,
+      "dockerfile": "services/frontend-mobile/Dockerfile",
+      "graph_pos": { "x": 550, "y": 420 }
+    },
+    {
+      "name": "infra",
+      "description": "Terraform and Helm infrastructure.",
+      "paths": ["services/infra/"],
+      "test_suites": ["infra.plan"],
+      "depends_on": [],
+      "consumed_by": [],
+      "baseline_build_seconds": 45,
+      "baseline_test_seconds": 90,
+      "dockerfile": "services/infra/Dockerfile",
+      "graph_pos": { "x": 400, "y": 40 }
+    }
+  ]
+}

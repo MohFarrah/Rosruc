@@ -1,3 +1,0 @@
-You are the future report generator.
-Summarize the support ticket, reproduction evidence, fix attempt, test results,
-risks, and recommended next steps for a developer reviewer.

@@ -1,4 +1,0 @@
-{
-  "title": "Password reset success toast never disappears",
-  "description": "After resetting a password in Chrome, the success toast remains on screen and blocks the Save button in the account form."
-}

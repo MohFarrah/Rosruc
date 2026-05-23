@@ -1,0 +1,13 @@
+{
+  "id": "INT-101",
+  "source": "jira",
+  "ticket_id": "PAY-482",
+  "title": "Update payment retry logic",
+  "body": "Customers see double-charges when retry fires within 200ms of the initial charge attempt. Debounce retry window and add integration test coverage.",
+  "pr_id": "PR-2031",
+  "pr_title": "fix(payments): debounce retry within 250ms window",
+  "pr_diff_files": [
+    "services/payments/retry.py",
+    "services/payments/tests/test_retry.py"
+  ]
+}

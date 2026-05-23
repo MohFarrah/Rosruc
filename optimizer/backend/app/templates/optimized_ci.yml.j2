@@ -1,0 +1,22 @@
+name: optimized-ci
+on: [pull_request]
+
+jobs:
+{% for svc in run_services %}
+  build-{{ svc.name }}:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/build.sh {{ svc.name }}
+
+  test-{{ svc.name }}:
+    runs-on: ubuntu-latest
+    needs: build-{{ svc.name }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/test.sh {{ svc.name }}
+{% endfor %}
+{% for svc in skipped_services %}
+  # SKIPPED build-{{ svc.name }}: {{ skip_reasons.get(svc.name, 'No impact detected') }}
+  # SKIPPED test-{{ svc.name }}: {{ skip_reasons.get(svc.name, 'No impact detected') }}
+{% endfor %}

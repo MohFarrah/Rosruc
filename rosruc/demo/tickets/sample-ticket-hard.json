@@ -1,4 +1,0 @@
-{
-  "title": "Bulk export misses some rows after retry",
-  "description": "A customer reports that a CSV export from a flaky network session succeeds after a retry but sometimes omits recently edited rows. The issue appears only when filters and a date range are applied together."
-}
