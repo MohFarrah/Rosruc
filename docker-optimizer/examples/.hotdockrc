@@ -1,0 +1,7 @@
+{
+  "container_name": "autostage-dev-container",
+  "mappings": {
+    "./": "/app"
+  },
+  "ignore": ["__pycache__", ".git", "venv", ".venv"]
+}

@@ -1,15 +1,15 @@
-# examples/Dockerfile.messy
 FROM python:3.9
 
-# This is bad: Installing dev tools into the final image
-RUN apt-get update && apt-get install -y gcc git
+# BLOAT: Installing things we don't need (Tree-shaker should find these)
+RUN apt-get update && apt-get install -y git vim wget gcc
 
 WORKDIR /app
 
-# This is bad: Copying everything before installing requirements
+# CACHE BUST: Copying everything before installing requirements
+# This is what causes the "one-hour" wait if requirements are large
 COPY . .
 
-# This is bad: No caching optimization
 RUN pip install -r requirements.txt
 
+# No reloader used here
 CMD ["python", "app.py"]

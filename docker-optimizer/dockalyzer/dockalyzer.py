@@ -68,9 +68,14 @@ class Dockalyzer:
                         continue
             process.wait()
             self.show_final_report()
+            
+            # --- CRITICAL INTEGRATION PIECE ---
+            # Returns the busted line so AutoStage knows what to fix.
+            return self.cache_broken_at
 
         except Exception as e:
             console.print(f"[bold red]Execution Error:[/bold red] {e}")
+            return None
 
     def generate_display(self):
         table = Table(show_header=True, header_style="bold magenta", expand=True)
@@ -120,6 +125,5 @@ class Dockalyzer:
         console.print(Panel(analysis, title=f"[bold {color}]{title}[/bold {color}]", border_style=color, padding=(1, 2)))
 
 if __name__ == "__main__":
-    # Standard practice for packages: use the current directory or examples
     target = "./examples" if os.path.exists("./examples") else "."
     Dockalyzer(path=target).run()

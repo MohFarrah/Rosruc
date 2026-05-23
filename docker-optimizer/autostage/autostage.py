@@ -2,66 +2,37 @@ import os
 import time
 import subprocess
 import json
-import re
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
+
+# Internal Suite Imports
 from .agent import refactor_dockerfile
+from .scanner import scan_codebase
+from hotdock.hotdock import HotDock
 
 console = Console()
 
 class AutoStage:
     def __init__(self, target_dir="./examples"):
-        self.target_dir = target_dir
-        self.old_file = os.path.join(target_dir, "Dockerfile.messy")
-        self.new_file = os.path.join(target_dir, "Dockerfile.optimized")
-        self.results_file = os.path.join(target_dir, "performance_manifest.json")
+        self.target_dir = os.path.abspath(target_dir)
+        self.old_file = os.path.join(self.target_dir, "Dockerfile.messy")
+        self.new_file = os.path.join(self.target_dir, "Dockerfile.optimized")
+        self.results_file = os.path.join(self.target_dir, "performance_manifest.json")
         self.stats = {}
 
-    def scan_dependencies(self):
-        """
-        Scans the entire codebase folder for actual library usage.
-        Supports Python and Node.js for the demo.
-        """
-        used = set()
-        # Patterns for different languages
-        py_re = re.compile(r"^(?:from|import)\s+([a-zA-Z0-9_]+)")
-        js_re = re.compile(r"(?:import|require)\s*\(?['\"]([@a-zA-Z0-9/_-]+)")
-
-        for root, dirs, files in os.walk(self.target_dir):
-            # Skip hidden folders and venv to save time/noise
-            dirs[:] = [d for d in dirs if not d.startswith('.') and d != 'venv']
-            
-            for file in files:
-                file_path = os.path.join(root, file)
-                
-                # Scan Python Files
-                if file.endswith(".py"):
-                    with open(file_path, "r", errors='ignore') as f:
-                        for line in f:
-                            m = py_re.match(line.strip())
-                            if m: used.add(m.group(1))
-                
-                # Scan JavaScript/TypeScript Files
-                elif file.endswith((".js", ".ts")):
-                    with open(file_path, "r", errors='ignore') as f:
-                        content = f.read()
-                        matches = js_re.findall(content)
-                        for m in matches:
-                            # Get the base package name (e.g., 'express' from 'express/lib')
-                            used.add(m.split('/')[0] if not m.startswith('@') else "/".join(m.split('/')[:2]))
-
-        return list(used)
-
     def get_image_size(self, tag):
+        """Returns image size in MB."""
         try:
             cmd = ["docker", "inspect", "-f", "{{.Size}}", tag]
             res = subprocess.run(cmd, capture_output=True, text=True, check=True)
             return round(int(res.stdout.strip()) / (1024 * 1024), 2)
-        except: return 0
+        except: 
+            return 0
 
     def parse_ai_response(self, text):
+        """Robustly parses the AI output format."""
         try:
             bloat = text.split("REMOVED_BLOAT:")[1].split("EXPLANATION:")[0].strip()
             explanation = text.split("EXPLANATION:")[1].split("NEW_DOCKERFILE:")[0].strip()
@@ -69,26 +40,34 @@ class AutoStage:
             dockerfile = code_part.replace("```dockerfile", "").replace("```", "").strip()
             return bloat, explanation, dockerfile
         except:
-            return "General bloat removed.", "Optimized for speed.", text
+            return "General bloat removed.", "Architecture optimized for Hot-Swap.", text
 
     def run(self, bust_info=None):
+        """
+        Act 2: The Architect.
+        Refactors the Dockerfile based on codebase scan and Act 1 diagnostics.
+        """
         console.print(Panel.fit(
             "[bold green]AutoStage: AI Tree-Shaker & Refactorer[/bold green]\n"
-            "[dim]Integrating Codebase Analysis + Cache-Bust Context[/dim]", 
+            "[dim]Pruning bloat and preparing Hot-Swap layers[/dim]", 
             border_style="green"
         ))
 
-        # 1. Codebase Scan (Dependency Detection)
-        with console.status("[bold magenta]Scanning codebase for actual imports...[/bold magenta]"):
-            used_libs = self.scan_dependencies()
-            console.print(f"[dim]Detected active dependencies: {', '.join(used_libs[:5])}...[/dim]")
+        # 1. Codebase Scan (Dependency Detection via scanner.py)
+        with console.status("[bold magenta]Scanning codebase for actual imports (Tree-Shaking)...[/bold magenta]"):
+            used_libs = scan_codebase(self.target_dir)
+            console.print(f"[dim]Detected active dependencies: {', '.join(used_libs[:10])}...[/dim]")
 
         # 2. Load the Messy Dockerfile
+        if not os.path.exists(self.old_file):
+            console.print(f"[red]Error: {self.old_file} not found. Create it for the demo![/red]")
+            return
+
         with open(self.old_file, "r") as f:
             old_content = f.read()
 
-        # 3. AI Refactor (Passing in Used Libs + Bust Info from Idea 1)
-        with console.status("[bold yellow]Gemini AI is pruning bloat and re-layering...[/bold yellow]"):
+        # 3. AI Refactor (Contextual Intelligence)
+        with console.status("[bold yellow]Gemini AI is re-layering for Zero-Build mode...[/bold yellow]"):
             raw_ai_response = refactor_dockerfile(old_content, used_libs, bust_info)
             bloat_report, explanation, optimized_code = self.parse_ai_response(raw_ai_response)
 
@@ -96,13 +75,13 @@ class AutoStage:
         with open(self.new_file, "w") as f:
             f.write(optimized_code)
 
-        console.print(Panel(bloat_report, title="[bold red]Bloat Radar (Tree-Shaking Results)[/bold red]", border_style="red"))
+        console.print(Panel(bloat_report, title="[bold red]Bloat Radar[/bold red]", border_style="red"))
         console.print(Panel(explanation, title="[bold cyan]Architectural Optimization[/bold cyan]", border_style="cyan"))
 
         # 5. Performance Benchmark (The Proof)
-        console.print("\n[bold cyan]Benchmarking: Measuring ROI...[/bold cyan]")
+        console.print("\n[bold cyan]Benchmarking: Original vs. Optimized Build...[/bold cyan]")
         with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), BarColumn(), console=console) as progress:
-            # Build Messy
+            # Build Original
             t1 = progress.add_task("[red]Building Original (Bloated)...", total=100)
             start_old = time.time()
             subprocess.run(["docker", "build", "-t", "stage-old", "-f", self.old_file, self.target_dir], capture_output=True)
@@ -151,6 +130,46 @@ class AutoStage:
         console.print(table)
         console.print(f"\n[bold green]✅ Manifest Sync Ready![/bold green] Results exported to {self.results_file}")
 
+    def launch_dev_mode(self):
+        """
+        Act 2 -> Act 3 Handoff:
+        Launches the optimized container and hands control over to HotDock.
+        """
+        console.print("\n" + Panel.fit(
+            "[bold orange3]Entering Zero-Build Dev Mode (HotDock Integration)[/bold orange3]\n"
+            "[dim]The build phase is over. Changes are now injected instantly.[/dim]", 
+            border_style="orange3"
+        ))
+        
+        container_name = "autostage-dev-container"
+        image_tag = "stage-new"
+
+        # 1. Cleanup
+        with console.status(f"[dim]Removing old container {container_name}...[/dim]"):
+            subprocess.run(["docker", "rm", "-f", container_name], capture_output=True)
+
+        # 2. Launch: Start container with AI-optimized reloader CMD
+        console.print(f"[bold blue]🚀 Launching container:[/bold blue] [white]{container_name}[/white]")
+        # -itd ensures it stays running and respects the reloader (uvicorn/nodemon)
+        launch_cmd = ["docker", "run", "-itd", "--name", container_name, image_tag]
+        
+        result = subprocess.run(launch_cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            console.print(f"[bold red]Failed to launch container:[/bold red] {result.stderr}")
+            return
+
+        # 3. Act 3 Handoff: Start HotDock watch loop
+        try:
+            hd = HotDock(project_path=self.target_dir)
+            hd.config["container_name"] = container_name
+            hd.config["remote_dir"] = "/app" # Default target for AI refactor
+            
+            hd.start()
+            
+        except KeyboardInterrupt:
+            console.print("\n[bold red]Stopping HotDock session...[/bold red]")
+        except Exception as e:
+            console.print(f"[bold red]HotDock Error:[/bold red] {e}")
+
 if __name__ == "__main__":
-    # Integration Demo: Pass a dummy 'bust' instruction as if it came from Idea 1
     AutoStage().run(bust_info="COPY . .")
