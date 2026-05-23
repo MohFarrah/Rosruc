@@ -1,0 +1,52 @@
+{
+  "name": "docker-dev-optimizer",
+  "displayName": "Docker Dev Optimizer",
+  "description": "VS Code sidebar for running the Docker Dev Optimizer Python CLI backend.",
+  "version": "0.0.1",
+  "publisher": "local",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onView:dockerDevOptimizer.sidebar"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "dockerDevOptimizer",
+          "title": "Docker Dev Optimizer",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "dockerDevOptimizer": [
+        {
+          "type": "webview",
+          "id": "dockerDevOptimizer.sidebar",
+          "name": "Optimizer"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "dockerDevOptimizer.focusSidebar",
+        "title": "Docker Dev Optimizer: Focus Sidebar"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.5"
+  }
+}

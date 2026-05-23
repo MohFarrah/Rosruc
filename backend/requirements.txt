@@ -1,0 +1,2 @@
+# Standard library only for the first backend version.
+# Keep this intentionally light for VS Code extension shell-out usage.
