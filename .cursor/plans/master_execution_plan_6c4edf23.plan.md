@@ -2,6 +2,9 @@
 name: master execution plan
 overview: "Master plan for the 16-hour Intent-Aware CI/CD Optimizer hackathon: locked stack decisions, architecture, what is real vs mocked, feature prioritization, hour-by-hour timeline, demo flow, pitch, and risk strategy. Three role-specific plans (backend, frontend, AI) live alongside this one and follow its contracts."
 todos:
+  - id: h0-cleanup
+    content: "H0:00–H0:30: Delete rosruc/ entirely (wrong product, wrong stack \u2014 Node/Express + stale Python placeholder) and scaffold fresh optimizer/ skeleton with backend/, frontend/, ai/, demo/ subdirs. Owned by frontend engineer."
+    status: pending
   - id: h0-contracts
     content: "H0–H2: Lock JSON contracts (intent, impact, plan, execution) and demo monorepo structure across all three engineers"
     status: pending
@@ -32,13 +35,41 @@ This is the commander plan. Backend, frontend, and AI engineers each have their 
 
 ## Locked Decisions
 
-- Pivot strategy: rip out [rosruc/backend](rosruc/backend) (Node/Express, wrong product). Keep [rosruc/frontend](rosruc/frontend) shell only — rewrite components for the new product. New code lives under `optimizer/` at repo root.
+- Pivot strategy: hard cut. The existing `rosruc/` scaffold is for a different product (bug-repro agent) and uses the wrong backend stack (Node/Express). Delete it; rebuild cleanly under `optimizer/`. See "Pre-Flight Cleanup" below.
 - Stack:
-  - Backend: Python 3.11, FastAPI, Uvicorn, SQLAlchemy, SQLite (single file `optimizer.db`), Jinja2 (YAML templates).
+  - Backend: Python 3.11, FastAPI, Uvicorn, SQLAlchemy, SQLite (single file `optimizer.db`), Jinja2 (YAML templates). NOT Node/Express.
   - Frontend: Vite + React 18 + TypeScript + Tailwind + Zustand + react-flow (graph viz) + recharts (savings charts).
-  - AI: OpenAI Structured Outputs (`response_format: json_schema`). Sequential agents. NO LangGraph for 16h MVP — overkill.
+  - AI: Python orchestrator with OpenAI Structured Outputs (`response_format: json_schema`). Sequential agents. NO LangGraph for 16h MVP — overkill.
 - Demo monorepo: a fake fintech monorepo committed under `optimizer/demo/monorepo/` with 8 services and a hand-written `service_graph.json`. No real compilation, ever.
 - Compute pricing constant: hardcoded `$0.12/min` ($7.20/hr) per CI minute (close to GitHub-hosted large-runner pricing — defensible).
+
+## Pre-Flight Cleanup (H0:00–H0:30)
+
+The existing [rosruc/](rosruc/) scaffold ships a Node/Express server, a stale Python placeholder under `rosruc/backend/ai/`, and React JSX components — all for a bug-repro product (`UWT DevTools Hackathon`). Wrong product, wrong backend stack. Hard cut.
+
+Delete:
+- [rosruc/backend/](rosruc/backend) — Node `server.js`, Express routes, controllers, services, plus the Python placeholder agents (`fix_agent.py`, `report_agent.py`, `reproduction_agent.py`, `ticket_parser.py`) and the wrong-product `db/schema.sql` + `db/seed.sql`.
+- [rosruc/frontend/](rosruc/frontend) — React JSX for a ticket-form app. We scaffold fresh TypeScript, do not migrate.
+- [rosruc/shared/](rosruc/shared) — JSON schemas for tickets/reports (wrong product).
+- [rosruc/demo/](rosruc/demo) — bug-repro demo fixtures (wrong product).
+- [rosruc/docs/](rosruc/docs) — wrong-product docs.
+- `rosruc/.env.example`, `rosruc/docker-compose.yml`, `rosruc/.gitignore`, `rosruc/README.md`.
+- Once empty, delete `rosruc/` itself.
+
+Create fresh:
+- `optimizer/backend/` — Python 3.11 + FastAPI + SQLAlchemy + SQLite + Jinja2 (owned by backend engineer).
+- `optimizer/frontend/` — Vite + React 18 + TypeScript + Tailwind (owned by frontend engineer).
+- `optimizer/ai/` — Python AI orchestrator with OpenAI Structured Outputs (owned by AI engineer).
+- `optimizer/demo/monorepo/` + `optimizer/demo/intents/` + `optimizer/demo/prs/` — fake monorepo and intent/PR fixtures.
+
+Repo root housekeeping:
+- Rewrite root `README.md` for the new product (1 paragraph + run instructions for `optimizer/backend` and `optimizer/frontend`).
+- Rewrite root `.gitignore` to cover Python (`__pycache__/`, `*.pyc`, `*.db`, `*.db-journal`), Node (`node_modules/`, `dist/`, `.vite/`), and secrets (`.env`, `.env.local`).
+- Do NOT add `optimizer/ai/cache/` to `.gitignore`. Those committed JSON files are the demo's reliability fallback.
+
+Owner: frontend engineer executes the cleanup (they have the most demo-storytelling context and are least blocked at H0). Backend and AI engineers do their architecture sync in parallel and start scaffolding once `optimizer/{backend,ai}/` directories exist (~H0:25).
+
+Total budget: 30 minutes. If it runs over, the team is already behind — escalate.
 
 ## System Architecture
 
@@ -111,11 +142,12 @@ DO NOT BUILD — explicit kill list:
 ## 16-Hour Timeline
 
 H0–H2 — Foundations + Contracts (full parallel)
-- All three: 30 min sync to lock JSON schemas (intent, impact, plan, execution) and demo monorepo structure. The schemas are THE contract — get them right, then everyone codes against fixtures.
-- Backend: scaffold FastAPI, SQLite, healthcheck, fixture-loading endpoints.
-- Frontend: scaffold Vite, Tailwind, routing skeleton, hit `/health`.
-- AI: write prompts, JSON schemas, hand-craft cached fixture responses for offline mode.
-- Checkpoint H2: contracts frozen, every service can boot.
+- Pre-flight cleanup (H0:00–H0:30, frontend engineer leads): delete `rosruc/` entirely, scaffold the `optimizer/` skeleton, rewrite root README and .gitignore. See "Pre-Flight Cleanup" section. Backend/AI engineers do the architecture sync in parallel and start scaffolding once their `optimizer/` subdirs exist.
+- All three: 30 min sync (parallel with cleanup) to lock JSON schemas (intent, impact, plan, execution) and demo monorepo structure. The schemas are THE contract — get them right, then everyone codes against fixtures.
+- Backend: scaffold FastAPI, SQLite, healthcheck, fixture-loading endpoints under `optimizer/backend/`.
+- Frontend: after cleanup, scaffold Vite + TS + Tailwind under `optimizer/frontend/`, routing skeleton, hit `/health`.
+- AI: write prompts, JSON schemas, hand-craft cached fixture responses for offline mode under `optimizer/ai/`.
+- Checkpoint H2: `rosruc/` deleted, contracts frozen, every service boots.
 
 H2–H4 — Vertical Slice on Stubs
 - Backend: `/intents`, `/intents/{id}/analyze` returning fixture JSON. No AI yet.
@@ -277,8 +309,8 @@ Example `service_graph.json` entry (one of 8):
 
 ## Final Build Order (do these literally in this sequence)
 
-1. H0:00–H0:30 — three-person sync. Lock contracts above. No exceptions.
-2. H0:30–H1:30 — hand-write `service_graph.json` + 3 intent fixtures + 3 PR fixtures. This single file determines impact analysis quality.
+1. H0:00–H0:30 — three-person architecture sync (lock contracts) running in parallel with frontend engineer executing pre-flight cleanup (delete `rosruc/`, scaffold `optimizer/` skeleton). No exceptions.
+2. H0:30–H1:30 — hand-write `service_graph.json` + 3 intent fixtures + 3 PR fixtures under `optimizer/demo/`. This single file determines impact analysis quality.
 3. H1:30–H2:00 — backend stub returns fixture data; frontend renders something.
 4. H2–H4 — entire happy path renders off fixtures. You have a working "demo" before any real AI.
 5. H4–H8 — replace stubs with real AI and real YAML.

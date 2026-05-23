@@ -2,8 +2,11 @@
 name: ai execution plan
 overview: AI engineer execution plan for the Intent-Aware CI/CD Optimizer hackathon. Owns three sequential OpenAI-Structured-Outputs agents (IntentParser, ImpactAnalyzer, PipelineOptimizer), prompts, JSON schemas, confidence scoring, disk-cached fallback, and the orchestrator entry point the backend calls. No LangGraph, no fine-tuning, no model training.
 todos:
+  - id: ai-h0-pivot-confirm
+    content: "H0:00–H0:30: Confirm rosruc/backend/ai/ is deleted by frontend's pre-flight cleanup. Do NOT read the old placeholder agents \u2014 they are for the wrong product and will mislead prompt design."
+    status: pending
   - id: ai-h0-fixture-seam
-    content: "H0:30–H2:00: Define Pydantic schemas, scaffold optimizer/ai/, hand-craft INT-101 fixture cache file, ship orchestrator.run() skeleton (unblocks backend)"
+    content: "H0:30–H2:00: Define Pydantic schemas, scaffold optimizer/ai/ from scratch, hand-craft INT-101 fixture cache file, ship orchestrator.run() skeleton (unblocks backend)"
     status: pending
   - id: ai-h2-intent-parser
     content: "H2:00–H4:00: IntentParser agent live — prompt + few-shot + structured output + cache layer"
@@ -63,6 +66,16 @@ You do NOT own:
 
 NOT using: LangGraph, LangChain, LlamaIndex, AutoGen, CrewAI, Instructor. They are too much abstraction for 16 hours. Three plain async Python functions chained sequentially is the right shape. Use OpenAI's native Structured Outputs (`response_format={"type":"json_schema", ...}`) — that gives you typed JSON without a framework.
 
+## Pre-Flight: Pivot from Existing Scaffold
+
+The existing [rosruc/backend/ai/](rosruc/backend/ai) ships Python placeholder code for the WRONG product (a bug-repro agent). The files there — `fix_agent.py`, `report_agent.py`, `reproduction_agent.py`, `ticket_parser.py`, plus prompts under `prompts/` and sandbox stubs under `sandbox/` — solve a different problem with different agents, different prompts, different schemas, and different orchestration.
+
+Hard cut. As part of the master plan H0:00–H0:30 cleanup, the frontend engineer deletes the entire `rosruc/` tree including `rosruc/backend/ai/`. You do not run the cleanup; you wait for the new `optimizer/ai/` directory to exist (~H0:30) and then start fresh.
+
+Critical: do NOT read the old `rosruc/backend/ai/` files for "inspiration." The placeholder agent boundaries (parse-ticket → reproduce-bug → fix-bug → report) are completely different from our pipeline (IntentParser → ImpactAnalyzer → PipelineOptimizer). Reading them will MISLEAD your prompt design. Treat them as deleted from minute one.
+
+Your new code lives at `optimizer/ai/`. Backend's `services/orchestrator_seam.py` will import from this module. Stack: Python 3.11, OpenAI SDK ≥ 1.40 with Structured Outputs, Pydantic v2.
+
 ## Folder Structure
 
 ```
@@ -84,7 +97,7 @@ optimizer/ai/
   cache.py                  # disk cache by intent_hash
   embeddings.py             # optional service matching
   config.py                 # model names, temperature, paths
-  cache/                    # gitignored at runtime, committed for demo
+  cache/                    # COMMITTED to git (demo reliability) \u2014 NOT in .gitignore
     {intent_hash}.json
 ```
 
@@ -238,12 +251,15 @@ If H10+ buffer:
 
 ## Hour-by-Hour Tasks
 
-H0:00–H0:30 — three-person sync, lock contracts.
+H0:00–H0:30 — three-person sync, lock contracts. In parallel, frontend engineer is deleting `rosruc/` and creating the `optimizer/` skeleton. Do NOT touch `rosruc/backend/ai/` files for "inspiration" — wrong product, will mislead prompts.
 
 H0:30–H2:00:
+- Verify `optimizer/ai/` directory exists and `rosruc/` is gone.
+- `cd optimizer/ai/`
+- Coordinate with backend engineer on Python venv strategy. Recommended: shared `optimizer/.venv` and shared `optimizer/requirements.txt` since both are Python 3.11 and share Pydantic. Saves install time and avoids version drift between backend's Pydantic models and your schemas.
 - `pip install openai pydantic`
-- Folder scaffolding above.
-- Define all 3 Pydantic schemas in `schemas.py`.
+- Folder scaffolding from "Folder Structure" section above.
+- Define all 3 Pydantic schemas in `schemas.py` from scratch (do not copy from anywhere — old placeholders had different shapes).
 - Hand-craft a fixture cache file for `INT-101` so backend/frontend can develop against real-shaped data immediately. This is YOUR critical-path early deliverable.
 - Write `orchestrator.run()` skeleton returning the fixture.
 - Backend integrates against this from H2 onward.

@@ -3,7 +3,7 @@ name: backend execution plan
 overview: Backend + database execution plan for the Intent-Aware CI/CD Optimizer hackathon. Owns FastAPI service, SQLite schema, all REST endpoints, repo manifest loader, YAML generator, savings calculator, simulated executor, and the integration seam to the AI orchestrator. Follows the JSON contracts frozen in the master plan.
 todos:
   - id: be-h0-scaffold
-    content: "H0:30–H2:00: Scaffold FastAPI app, SQLAlchemy models, init_db, health + intents read endpoints, manifest loader"
+    content: "H0:30–H2:00: Confirm rosruc/backend/ is deleted (master pre-flight cleanup), then scaffold FastAPI under optimizer/backend/ \u2014 SQLAlchemy models, init_db, health + intents read endpoints, manifest loader. Python 3.11. NOT Node/Express."
     status: pending
   - id: be-h2-stubs
     content: "H2:00–H4:00: Stubbed analyze/plan/execute endpoints + working executor state machine on fixture data"
@@ -47,6 +47,24 @@ You do NOT own:
 - LLM prompts, schemas, or OpenAI calls (AI engineer)
 - Any UI (frontend engineer)
 - Real CI runners, real Docker, real GitHub OAuth (none of us)
+- Executing the pre-flight cleanup itself — frontend engineer does that. You just verify the directory is gone before scaffolding.
+
+## Pre-Flight: Pivot from Existing Scaffold
+
+The existing [rosruc/backend/](rosruc/backend) is wrong on two axes: wrong product (bug-repro agent) AND wrong stack (Node/Express + a stale Python placeholder that does NOT match this product's AI architecture). This is a hard cut, not a port.
+
+What gets deleted at H0:00–H0:30 (executed by frontend engineer as part of the master pre-flight cleanup):
+- [rosruc/backend/api/](rosruc/backend/api) — Express `server.js`, routes, controllers, services, middleware. None of it transfers.
+- [rosruc/backend/ai/](rosruc/backend/ai) — Python placeholder agents (`fix_agent.py`, `report_agent.py`, `reproduction_agent.py`, `ticket_parser.py`) for the bug-repro product. Different agents, different prompts, different schemas. Delete; do not consult.
+- [rosruc/backend/db/](rosruc/backend/db) — `schema.sql` and `seed.sql` for the bug-repro tables. Wrong schema. Write a fresh one in SQLAlchemy under `optimizer/backend/app/models.py`.
+- `rosruc/backend/package.json`, `package-lock.json`, `node_modules/` (if present), `requirements.txt`, `README.md`.
+
+Why a clean rebuild beats a port:
+- Express → FastAPI is not an idiomatic translation. Pydantic + dependency injection + async I/O patterns differ enough that a port carries Express's design assumptions into FastAPI.
+- The existing Python placeholder uses different prompts, schemas, and agent boundaries than our IntentParser/ImpactAnalyzer/PipelineOptimizer pipeline. Reading it will MISLEAD you.
+- A fresh scaffold with our SQLAlchemy models takes ~45 minutes from zero. Porting Express logic that doesn't apply takes longer and ends up worse.
+
+By H0:30, your tree at [rosruc/backend/](rosruc/backend) should not exist. Your new code lives at `optimizer/backend/`. Stack: Python 3.11, FastAPI, Uvicorn, SQLAlchemy, SQLite, Jinja2, Pydantic v2.
 
 ## Folder Structure
 
@@ -209,14 +227,17 @@ The seam itself just imports and calls. If the AI module raises or is unavailabl
 
 ## Hour-by-Hour Tasks
 
-H0:00–H0:30 — sync with team, lock contracts (master plan section).
+H0:00–H0:30 — sync with team, lock contracts (master plan section). In parallel, frontend engineer is executing the pre-flight cleanup. Verify `rosruc/backend/` is gone before you start scaffolding — you do NOT want to start `pip install` inside the dying Node tree.
 
 H0:30–H2:00:
-- `pip install fastapi uvicorn[standard] sqlalchemy pydantic jinja2 pyyaml`
+- Confirm working directory is clean: `optimizer/` exists, `rosruc/` is gone.
+- Coordinate with AI engineer on Python venv strategy. Recommended: single shared `optimizer/.venv` (created at `optimizer/`, activated from either subdirectory) and single shared `optimizer/requirements.txt` covering both backend + ai deps. Saves install time and prevents Pydantic version drift between your models and the AI engineer's schemas.
+- `python -m venv optimizer/.venv && source optimizer/.venv/bin/activate` (or `optimizer\.venv\Scripts\activate` on Windows).
+- `pip install fastapi uvicorn[standard] sqlalchemy pydantic jinja2 pyyaml openai`. Pin versions in `optimizer/requirements.txt`.
 - Scaffold folder structure above.
-- `db.py` + `models.py` + `init_db()`.
-- `GET /health`, `GET /intents`, `GET /intents/{id}` working off seeded fixtures.
-- Manifest loader returns services from `service_graph.json`.
+- `db.py` + `models.py` + `init_db()` — fresh SQLAlchemy schema, do NOT copy from `rosruc/backend/db/schema.sql` (different product).
+- `GET /health`, `GET /intents`, `GET /intents/{id}` working off seeded fixtures from `optimizer/demo/intents/*.json`.
+- Manifest loader returns services from `optimizer/demo/monorepo/service_graph.json`.
 
 H2:00–H4:00:
 - `POST /intents/{id}/analyze` returns hardcoded fixture analysis (matches master-plan schema). No AI yet.

@@ -2,8 +2,11 @@
 name: frontend execution plan
 overview: Frontend / fullstack execution plan for the Intent-Aware CI/CD Optimizer hackathon. Owns the entire React UI, all views, the animated execution dashboard (the demo-winning visual), polling glue to the backend, plus authoring of the fake monorepo and demo intent fixtures. Also owns demo rehearsal.
 todos:
+  - id: fe-h0-cleanup
+    content: "H0:00–H0:30: Execute team-wide pre-flight cleanup \u2014 delete rosruc/ entirely (backend, frontend, shared, demo, docs + root configs), create optimizer/{backend,frontend,ai,demo} skeleton, rewrite root README.md and .gitignore. Unblocks the entire team."
+    status: pending
   - id: fe-h0-scaffold
-    content: "H0:30–H2:00: Scaffold Vite/React/TS/Tailwind, layout shell, router, types/contracts.ts mirroring backend Pydantic schemas"
+    content: "H0:30–H2:00: Scaffold Vite/React/TS/Tailwind under optimizer/frontend/, layout shell, router, types/contracts.ts mirroring backend Pydantic schemas"
     status: pending
   - id: fe-h0-demo-monorepo
     content: "H0:30–H2:00: Author service_graph.json with 8 services + manual graph_pos + 3 intent fixtures + 3 PR fixtures + stub service files (unblocks backend/AI)"
@@ -65,12 +68,22 @@ You do NOT own:
 
 Do NOT install: Material UI, Chakra, Ant Design, d3, redux-toolkit, websockets, anything else. Time tax.
 
-## Pivot from Existing Scaffold
+## Pre-Flight: Pivot from Existing Scaffold (you own this for the team)
 
-The existing [rosruc/frontend](rosruc/frontend) is the wrong product. Plan:
-- Create new project at `optimizer/frontend/` with `npm create vite@latest -- --template react-ts`.
-- Do NOT try to migrate the existing components — they are for a bug-repro app, not a CI optimizer.
-- The only thing salvageable is `vite.config.js` proxy pattern. Reference it; don't import from it.
+The existing [rosruc/](rosruc/) scaffold is for a bug-repro product (`UWT DevTools Hackathon` — ticket-form + agent report viewer). Wrong product on every axis. The backend is Node/Express (we are pivoting to Python FastAPI), the frontend is React JSX for a different UI, and the AI placeholders use different prompts and schemas than ours.
+
+You execute the team-wide cleanup at H0:00–H0:30. Backend and AI engineers depend on the fresh `optimizer/` tree existing before they can scaffold. You're the natural owner: most demo-storytelling context, least blocked at H0, and you'll need the new directory layout immediately to start your own scaffolding.
+
+Cleanup steps (run from repo root, in this order):
+- Delete the entire `rosruc/` tree: backend, frontend, shared, demo, docs, plus root config files (`.env.example`, `docker-compose.yml`, `.gitignore`, `README.md`). All of it is wrong-product.
+- Create the `optimizer/` skeleton: `optimizer/backend/`, `optimizer/frontend/`, `optimizer/ai/`, `optimizer/demo/monorepo/`, `optimizer/demo/intents/`, `optimizer/demo/prs/`. Empty directories with `.gitkeep` is fine — backend and AI fill them.
+- Rewrite repo-root `README.md` for the new product: 1 paragraph describing the Intent-Aware CI/CD Optimizer + run instructions for `optimizer/backend` (uvicorn) and `optimizer/frontend` (vite).
+- Rewrite repo-root `.gitignore`: Python (`__pycache__/`, `*.pyc`, `*.db`, `*.db-journal`), Node (`node_modules/`, `dist/`, `.vite/`), secrets (`.env`, `.env.local`). Do NOT ignore `optimizer/ai/cache/` — those JSON files are the demo's reliability fallback and must be committed.
+- Inside `optimizer/frontend/`: `npm create vite@latest . -- --template react-ts`. Install Tailwind, Zustand, react-router-dom, @tanstack/react-query, react-flow, recharts, prism-react-renderer.
+
+Do NOT migrate any components or styles from `rosruc/frontend/`. Different product, different shape. The only worth keeping is the dev-server proxy snippet — copy `server.proxy['/api'] -> http://localhost:8000` into the new `vite.config.ts`. That's the entire transferable surface.
+
+Total budget for cleanup + new Vite scaffold: 30 minutes. Then resume your own UI work at H0:30.
 
 ## Folder Structure
 
