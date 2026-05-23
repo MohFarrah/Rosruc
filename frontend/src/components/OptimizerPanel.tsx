@@ -15,14 +15,13 @@ import type {
   HotSwapEvent,
   OptimizationInterval,
   OptimizationStrategy,
+  PipelineResult,
   SavingsComparison,
 } from '../types/contracts'
+import { manifestToSavingsComparison } from '../api/dockerOptimizer'
 
-const DEMO_HOT_SWAP: HotSwapEvent = {
-  filename: 'app.py',
-  durationMs: 15,
-  message: '⚡ Hot-Swap: app.py ( 15ms )',
-  syncedAt: new Date().toISOString(),
+function pipelineToResults(pipeline: PipelineResult): SavingsComparison {
+  return manifestToSavingsComparison(pipeline.manifest, pipeline.analyze, pipeline.watch)
 }
 
 export function OptimizerPanel() {
@@ -40,16 +39,21 @@ export function OptimizerPanel() {
     mutationFn: optimizerApi.submitPreferences,
     onSuccess: (result) => {
       setStatusMessage(result.message ?? (result.ok ? 'Optimization pipeline completed.' : 'Submit failed.'))
-      if (result.savings) {
+
+      if (result.pipeline) {
+        setResults(pipelineToResults(result.pipeline))
+      } else if (result.savings) {
         setResults(result.savings)
       }
-      if (result.savings?.watch) {
+
+      if (result.pipeline?.watch || result.savings?.watch) {
         setHotSwapEvents([])
         setLastSyncedAt(null)
       }
     },
-    onError: () => {
-      setStatusMessage('Could not reach the backend. Try again.')
+    onError: (error) => {
+      setResults(null)
+      setStatusMessage(error instanceof Error ? error.message : 'Could not reach the backend. Try again.')
     },
   })
 
@@ -74,21 +78,6 @@ export function OptimizerPanel() {
       }
     })
   }, [])
-
-  useEffect(() => {
-    if (!results?.watch || import.meta.env.VITE_USE_DEMO_DATA !== 'true') return
-
-    const timer = window.setTimeout(() => {
-      const demoEvent: HotSwapEvent = {
-        ...DEMO_HOT_SWAP,
-        syncedAt: new Date().toISOString(),
-      }
-      setHotSwapEvents([demoEvent])
-      setLastSyncedAt(demoEvent.syncedAt)
-    }, 1500)
-
-    return () => window.clearTimeout(timer)
-  }, [results?.watch])
 
   const controlsLocked = autoMode
   const displayedStrategy = autoMode ? RECOMMENDED_STRATEGY : strategy
@@ -251,6 +240,7 @@ export function OptimizerPanel() {
           watch={results?.watch}
           hotSwapEvents={hotSwapEvents}
           lastSyncedAt={lastSyncedAt}
+          isLoading={submitMutation.isPending}
         />
       </section>
     </div>

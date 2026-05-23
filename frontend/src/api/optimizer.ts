@@ -4,7 +4,6 @@ import type {
   OptimizationPreferences,
   PerformanceManifest,
   PipelineResult,
-  SavingsComparison,
   SubmitPreferencesResponse,
   WatchResponse,
 } from '../types/contracts'
@@ -15,7 +14,6 @@ import {
   dockerOptimizerApi,
   manifestToSavingsComparison,
 } from './dockerOptimizer'
-import { api } from './client'
 import { isVsCodeWebview, postToExtension } from '../lib/vscode'
 
 export const OPTIMIZATION_STRATEGIES: {
@@ -80,6 +78,8 @@ const DEMO_PIPELINE: PipelineResult = {
 
 const DEMO_SAVINGS = manifestToSavingsComparison(DEMO_MANIFEST, DEMO_ANALYZE, DEMO_WATCH)
 
+export { DEMO_SAVINGS }
+
 function pipelineToResponse(
   pipeline: PipelineResult,
   message: string,
@@ -93,16 +93,28 @@ function pipelineToResponse(
 }
 
 function submitViaExtension(preferences: OptimizationPreferences): Promise<SubmitPreferencesResponse> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const timeout = window.setTimeout(() => {
-      resolve(pipelineToResponse(DEMO_PIPELINE, 'Preferences sent to extension host (demo pipeline).'))
-    }, 600)
+      reject(new Error('Extension host did not respond. Wire submitPreferences to the backend API.'))
+    }, 30_000)
 
     const handler = (event: MessageEvent) => {
       if (event.data?.type !== 'submitResult') return
       window.clearTimeout(timeout)
       window.removeEventListener('message', handler)
-      resolve(event.data.payload as SubmitPreferencesResponse)
+
+      const payload = event.data.payload as SubmitPreferencesResponse
+      if (!payload.ok) {
+        reject(new Error(payload.message ?? 'Optimization failed in the extension host.'))
+        return
+      }
+
+      if (payload.pipeline) {
+        resolve(pipelineToResponse(payload.pipeline, payload.message ?? 'Optimization pipeline completed.'))
+        return
+      }
+
+      resolve(payload)
     }
 
     window.addEventListener('message', handler)
@@ -125,41 +137,10 @@ export const optimizerApi = {
     }
 
     if (import.meta.env.VITE_USE_DEMO_DATA === 'true') {
-      return pipelineToResponse(DEMO_PIPELINE, 'Demo pipeline completed (backend not connected).')
+      return pipelineToResponse(DEMO_PIPELINE, 'Demo pipeline completed (VITE_USE_DEMO_DATA=true).')
     }
 
-    try {
-      await api.post<SubmitPreferencesResponse>('/optimize/preferences', preferences)
-    } catch {
-      // Backend may not expose preferences yet — fall through to the 3-act pipeline.
-    }
-
-    try {
-      return await runBackendPipeline()
-    } catch {
-      return pipelineToResponse(
-        DEMO_PIPELINE,
-        'Backend unavailable — showing demo metrics. Start docker-optimizer API on port 8000.',
-      )
-    }
-  },
-
-  getSavingsComparison: async (): Promise<SavingsComparison> => {
-    if (isVsCodeWebview) {
-      postToExtension({ type: 'getSavings' })
-      return DEMO_SAVINGS
-    }
-
-    if (import.meta.env.VITE_USE_DEMO_DATA === 'true') {
-      return DEMO_SAVINGS
-    }
-
-    try {
-      await dockerOptimizerApi.health()
-      return DEMO_SAVINGS
-    } catch {
-      return DEMO_SAVINGS
-    }
+    return runBackendPipeline()
   },
 }
 

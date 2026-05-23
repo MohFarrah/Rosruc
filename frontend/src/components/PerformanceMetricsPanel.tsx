@@ -4,14 +4,11 @@ import type {
   PerformanceManifest,
   WatchResponse,
 } from '../types/contracts'
-
-function formatSeconds(seconds: number): string {
-  return `${seconds.toFixed(1)}s`
-}
-
-function formatMegabytes(mb: number): string {
-  return `${mb.toFixed(1)} MB`
-}
+import {
+  formatAnalyzeStatus,
+  formatBytesFromMegabytes,
+  formatDuration,
+} from '../lib/formatMetrics'
 
 export function PerformanceMetricsPanel({
   analyze,
@@ -19,17 +16,27 @@ export function PerformanceMetricsPanel({
   watch,
   hotSwapEvents = [],
   lastSyncedAt,
+  isLoading = false,
 }: {
   analyze?: AnalyzeResponse
   manifest?: PerformanceManifest
   watch?: WatchResponse
   hotSwapEvents?: HotSwapEvent[]
   lastSyncedAt?: string | null
+  isLoading?: boolean
 }) {
+  if (isLoading) {
+    return (
+      <p className="text-sm text-[var(--vscode-descriptionForeground,#a1a1aa)]">
+        Running optimizer pipeline…
+      </p>
+    )
+  }
+
   if (!manifest && !analyze && !watch) {
     return (
       <p className="text-sm text-[var(--vscode-descriptionForeground,#a1a1aa)]">
-        Run an optimization to see diagnostics and performance metrics.
+        Apply & start optimization to load results from the backend.
       </p>
     )
   }
@@ -47,15 +54,19 @@ export function PerformanceMetricsPanel({
           </div>
           <div className="diagnostic-grid">
             <MetricCard
-              label="Cache bust line"
-              value={analyze.busted_line ?? 'No bust detected'}
+              label="Cache bust instruction"
+              value={analyze.busted_line ?? 'None — build reused all layers'}
               accent={Boolean(analyze.busted_line)}
             />
             <MetricCard
               label="Scan status"
-              value={analyze.status === 'success' ? 'Cache bust found' : 'Already optimized'}
+              value={formatAnalyzeStatus(analyze.status, analyze.busted_line)}
             />
           </div>
+          <p className="text-xs text-[var(--vscode-descriptionForeground,#a1a1aa)]">
+            The cache bust instruction is the Dockerfile step where Docker stopped reusing cached
+            layers and rebuilt from that point onward.
+          </p>
         </section>
       ) : null}
 
@@ -66,46 +77,16 @@ export function PerformanceMetricsPanel({
             <h3 className="text-sm font-medium">AutoStage performance manifest</h3>
           </div>
 
-          <div className="badge-row">
-            <ImprovementBadge label="Build speed" value={manifest.savings.time} />
-            <ImprovementBadge label="Image size" value={manifest.savings.size} />
-          </div>
-
           <div className="grid grid-cols-2 gap-3">
-            <MetricCard label="Build time saved" value={manifest.savings.time} accent />
-            <MetricCard label="Image size saved" value={manifest.savings.size} accent />
             {buildTime ? (
-              <MetricCard
-                label="Build before → after"
-                value={`${formatSeconds(buildTime.before)} → ${formatSeconds(buildTime.after)}`}
-              />
+              <MetricCard label="Build time" value={formatDuration(buildTime.after)} accent />
             ) : null}
             {imageSize ? (
-              <MetricCard
-                label="Size before → after"
-                value={`${formatMegabytes(imageSize.before)} → ${formatMegabytes(imageSize.after)}`}
-              />
+              <MetricCard label="Image size" value={formatBytesFromMegabytes(imageSize.after)} accent />
             ) : null}
+            <MetricCard label="Build time saved" value={manifest.savings.time} />
+            <MetricCard label="Image size saved" value={manifest.savings.size} />
           </div>
-
-          {buildTime ? (
-            <div className="comparison-grid">
-              <ComparisonRow
-                label="Build time (before)"
-                value={buildTime.before}
-                maxValue={buildTime.before}
-                formatter={formatSeconds}
-                tone="before"
-              />
-              <ComparisonRow
-                label="Build time (after)"
-                value={buildTime.after}
-                maxValue={buildTime.before}
-                formatter={formatSeconds}
-                tone="after"
-              />
-            </div>
-          ) : null}
 
           {imageSize ? (
             <div className="comparison-grid">
@@ -113,17 +94,23 @@ export function PerformanceMetricsPanel({
                 label="Image size (before)"
                 value={imageSize.before}
                 maxValue={imageSize.before}
-                formatter={formatMegabytes}
+                formatter={formatBytesFromMegabytes}
                 tone="before"
               />
               <ComparisonRow
                 label="Image size (after)"
                 value={imageSize.after}
                 maxValue={imageSize.before}
-                formatter={formatMegabytes}
+                formatter={formatBytesFromMegabytes}
                 tone="after"
               />
             </div>
+          ) : null}
+
+          {buildTime ? (
+            <p className="text-xs text-[var(--vscode-descriptionForeground,#a1a1aa)]">
+              Build went from {formatDuration(buildTime.before)} to {formatDuration(buildTime.after)}.
+            </p>
           ) : null}
 
           <div className="bloat-panel">
@@ -184,15 +171,6 @@ function MetricCard({
     <div className="metric-card">
       <p className="text-xs text-[var(--vscode-descriptionForeground,#a1a1aa)]">{label}</p>
       <p className={`mt-1 text-sm font-semibold leading-snug ${accent ? 'text-emerald-400' : ''}`}>{value}</p>
-    </div>
-  )
-}
-
-function ImprovementBadge({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="improvement-badge">
-      <span>{label}</span>
-      <strong>{value}</strong>
     </div>
   )
 }

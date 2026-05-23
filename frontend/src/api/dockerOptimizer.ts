@@ -61,9 +61,28 @@ export const dockerOptimizerApi = {
   watch: () => api.post<WatchResponse>('/watch'),
 
   runPipeline: async (): Promise<PipelineResult> => {
-    const analyze = await dockerOptimizerApi.analyze()
-    const manifest = await dockerOptimizerApi.optimize()
-    const watch = await dockerOptimizerApi.watch()
+    let analyze: AnalyzeResponse
+    let manifest: PerformanceManifest
+    let watch: WatchResponse
+
+    try {
+      analyze = await dockerOptimizerApi.analyze()
+    } catch (error) {
+      throw new Error(`Act 1 (/analyze) failed: ${error instanceof Error ? error.message : 'unknown error'}`)
+    }
+
+    try {
+      manifest = await dockerOptimizerApi.optimize()
+    } catch (error) {
+      throw new Error(`Act 2 (/optimize) failed: ${error instanceof Error ? error.message : 'unknown error'}`)
+    }
+
+    try {
+      watch = await dockerOptimizerApi.watch()
+    } catch (error) {
+      throw new Error(`Act 3 (/watch) failed: ${error instanceof Error ? error.message : 'unknown error'}`)
+    }
+
     return { analyze, manifest, watch }
   },
 
