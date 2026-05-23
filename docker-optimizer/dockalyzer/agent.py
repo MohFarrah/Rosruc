@@ -1,8 +1,25 @@
 import google.generativeai as genai
 import os
+from pathlib import Path
+
+
+def load_env_file(env_path):
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+
+        key, value = stripped.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_env_file(Path(__file__).resolve().parents[1] / ".env")
 
 genai.configure(api_key=os.environ.get('GOOGLE_API_KEY', 'YOUR_API_KEY'))
-model = genai.GenerativeModel('gemini-1.5-flash')
+model = genai.GenerativeModel('gemini-2.0-flash')
 
 def get_ai_analysis(status, dockerfile_content, busted_line=None):
     """

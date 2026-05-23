@@ -1,0 +1,17 @@
+{
+    "metrics": {
+        "build_time": {
+            "before": 4.67,
+            "after": 0.79
+        },
+        "image_size": {
+            "before": 421.32,
+            "after": 421.32
+        }
+    },
+    "savings": {
+        "time": "83.0%",
+        "size": "0.0%"
+    },
+    "bloat_removed": "AI unavailable \u2014 benchmarking with original Dockerfile."
+}

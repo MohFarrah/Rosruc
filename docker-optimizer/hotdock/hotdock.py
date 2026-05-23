@@ -1,49 +1,130 @@
-# main.py
-import sys
+import json
 import os
-from rich.console import Console
-from rich.panel import Panel
+import subprocess
+import time
+from pathlib import Path
 
-# Import our Suite
-from dockalyzer.dockalyzer import Dockalyzer
-from autostage.autostage import AutoStage
+from rich.console import Console
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 console = Console()
 
-def run_hackathon_demo():
-    # Setup - Path to your messy test project
-    examples_path = "./examples"
-    
-    console.clear()
-    console.print(Panel.fit(
-        "[bold cyan]DOCKER-OPTIMIZER: THE CI/CD DEV-TOOL SUITE[/bold cyan]\n"
-        "[white]Act 1: Dockalyzer | Act 2: AutoStage | Act 3: HotDock[/white]",
-        border_style="cyan"
-    ))
+DEFAULT_CONFIG = {
+    "container_name": "autostage-dev-container",
+    "remote_dir": "/app",
+    "mappings": {"./": "/app"},
+    "ignore": ["__pycache__", ".git", "venv", ".venv", "node_modules", ".hotdockrc"],
+}
 
-    # --- ACT 1: DIAGNOSIS ---
-    # We run the build and find out WHY it's slow.
-    ana = Dockalyzer(path=examples_path)
-    busted_line = ana.run()
-    
-    input("\n[Press ENTER to trigger Act 2: Auto-Optimization]...")
 
-    # --- ACT 2: OPTIMIZATION ---
-    # We take Act 1's findings, scan the codebase, and refactor.
-    ref = AutoStage(target_dir=examples_path)
-    ref.run(bust_info=busted_line)
+class _HotDockHandler(FileSystemEventHandler):
+    def __init__(self, hotdock: "HotDock"):
+        self.hotdock = hotdock
 
-    input("\n[Press ENTER to launch Act 3: Hot-Swap Development]...")
+    def on_modified(self, event):
+        if event.is_directory:
+            return
+        self.hotdock.sync_file(event.src_path)
 
-    # --- ACT 3: LIVE SYNC ---
-    # We launch the optimized container and start the zero-build watcher.
-    try:
-        ref.launch_dev_mode()
-    except KeyboardInterrupt:
-        console.print("\n[bold red]Demo Ended.[/bold red]")
+    def on_created(self, event):
+        if event.is_directory:
+            return
+        self.hotdock.sync_file(event.src_path)
 
-if __name__ == "__main__":
-    if not os.path.exists("./examples/Dockerfile.messy"):
-        console.print("[red]Error: Create ./examples/Dockerfile.messy to start the demo![/red]")
-    else:
-        run_hackathon_demo()
+
+class HotDock:
+    """Act 3: watch workspace files and docker cp them into the running container."""
+
+    def __init__(self, project_path: str = "."):
+        self.project_path = os.path.abspath(project_path)
+        self.config = dict(DEFAULT_CONFIG)
+        self._load_rc()
+
+    def _load_rc(self) -> None:
+        rc_path = os.path.join(self.project_path, ".hotdockrc")
+        if not os.path.isfile(rc_path):
+            return
+
+        with open(rc_path, encoding="utf-8") as handle:
+            loaded = json.load(handle)
+        self.config.update(loaded)
+
+    def _should_ignore(self, relative_path: str) -> bool:
+        parts = Path(relative_path).parts
+        ignored = set(self.config.get("ignore", []))
+        return any(part in ignored for part in parts)
+
+    def _remote_path(self, local_path: str) -> str | None:
+        local = Path(local_path).resolve()
+        project = Path(self.project_path).resolve()
+
+        try:
+            relative = local.relative_to(project).as_posix()
+        except ValueError:
+            return None
+
+        if self._should_ignore(relative):
+            return None
+
+        mappings: dict[str, str] = self.config.get("mappings") or {"./": self.config["remote_dir"]}
+        for local_prefix, remote_prefix in mappings.items():
+            normalized_prefix = local_prefix.strip("./").strip("/")
+            if normalized_prefix and not (relative == normalized_prefix or relative.startswith(f"{normalized_prefix}/")):
+                if normalized_prefix != ".":
+                    continue
+
+            suffix = relative
+            if normalized_prefix and normalized_prefix != "." and relative.startswith(f"{normalized_prefix}/"):
+                suffix = relative[len(normalized_prefix) + 1 :]
+
+            remote_base = remote_prefix.rstrip("/")
+            return f"{remote_base}/{suffix}" if suffix else remote_base
+
+        remote_base = self.config["remote_dir"].rstrip("/")
+        return f"{remote_base}/{relative}"
+
+    def sync_file(self, local_path: str) -> bool:
+        container = self.config.get("container_name")
+        remote_path = self._remote_path(local_path)
+
+        if not container or not remote_path:
+            return False
+
+        start = time.perf_counter()
+        result = subprocess.run(
+            ["docker", "cp", local_path, f"{container}:{remote_path}"],
+            capture_output=True,
+            text=True,
+        )
+        elapsed_ms = int((time.perf_counter() - start) * 1000)
+        filename = Path(local_path).name
+
+        if result.returncode != 0:
+            console.print(f"[bold red]Hot-Swap failed:[/bold red] {filename} — {result.stderr.strip()}")
+            return False
+
+        console.print(f"[bold orange3]⚡ Hot-Swap:[/bold orange3] {filename} ( {elapsed_ms}ms )")
+        return True
+
+    def start(self) -> None:
+        container = self.config.get("container_name")
+        if not container:
+            raise ValueError("HotDock config missing container_name")
+
+        console.print(
+            f"[bold orange3]HotDock watching[/bold orange3] [white]{self.project_path}[/white] "
+            f"→ [cyan]{container}[/cyan]"
+        )
+
+        handler = _HotDockHandler(self)
+        observer = Observer()
+        observer.schedule(handler, self.project_path, recursive=True)
+        observer.start()
+
+        try:
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()

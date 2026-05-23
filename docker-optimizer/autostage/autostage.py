@@ -10,7 +10,6 @@ from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn
 # Internal Suite Imports
 from .agent import refactor_dockerfile
 from .scanner import scan_codebase
-from hotdock.hotdock import HotDock
 
 console = Console()
 
@@ -69,7 +68,13 @@ class AutoStage:
         # 3. AI Refactor (Contextual Intelligence)
         with console.status("[bold yellow]Gemini AI is re-layering for Zero-Build mode...[/bold yellow]"):
             raw_ai_response = refactor_dockerfile(old_content, used_libs, bust_info)
-            bloat_report, explanation, optimized_code = self.parse_ai_response(raw_ai_response)
+            if raw_ai_response.startswith("Agent Error:"):
+                console.print(f"[yellow]{raw_ai_response}[/yellow]")
+                bloat_report = "AI unavailable — benchmarking with original Dockerfile."
+                explanation = raw_ai_response
+                optimized_code = old_content
+            else:
+                bloat_report, explanation, optimized_code = self.parse_ai_response(raw_ai_response)
 
         # 4. Write the optimized file
         with open(self.new_file, "w") as f:
@@ -135,10 +140,11 @@ class AutoStage:
         Act 2 -> Act 3 Handoff:
         Launches the optimized container and hands control over to HotDock.
         """
-        console.print("\n" + Panel.fit(
+        console.print()
+        console.print(Panel.fit(
             "[bold orange3]Entering Zero-Build Dev Mode (HotDock Integration)[/bold orange3]\n"
-            "[dim]The build phase is over. Changes are now injected instantly.[/dim]", 
-            border_style="orange3"
+            "[dim]The build phase is over. Changes are now injected instantly.[/dim]",
+            border_style="orange3",
         ))
         
         container_name = "autostage-dev-container"
@@ -150,8 +156,8 @@ class AutoStage:
 
         # 2. Launch: Start container with AI-optimized reloader CMD
         console.print(f"[bold blue]🚀 Launching container:[/bold blue] [white]{container_name}[/white]")
-        # -itd ensures it stays running and respects the reloader (uvicorn/nodemon)
-        launch_cmd = ["docker", "run", "-itd", "--name", container_name, image_tag]
+        # -d keeps the container running in headless/API contexts (no TTY required)
+        launch_cmd = ["docker", "run", "-d", "--name", container_name, image_tag]
         
         result = subprocess.run(launch_cmd, capture_output=True, text=True)
         if result.returncode != 0:
@@ -160,6 +166,8 @@ class AutoStage:
 
         # 3. Act 3 Handoff: Start HotDock watch loop
         try:
+            from hotdock.hotdock import HotDock
+
             hd = HotDock(project_path=self.target_dir)
             hd.config["container_name"] = container_name
             hd.config["remote_dir"] = "/app" # Default target for AI refactor
