@@ -1,34 +1,42 @@
-# Intent-Aware CI/CD Optimizer
+# Docker Dev Optimizer
 
-An AI-powered CI/CD optimization engine that reads engineering intent from project-management tickets and pull requests, determines what parts of a codebase are actually affected, and selectively executes only the necessary builds, tests, and deployments to reduce compute waste and accelerate engineering velocity.
+VS Code extension UI for the Docker Optimizer 3-act suite: **Dockalyzer** (diagnose) → **AutoStage** (optimize) → **HotDock** (live sync).
 
 ## Run locally
 
-### Backend (FastAPI)
+### Backend (docker-optimizer API)
 
-```sh
-cd optimizer
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-cd backend
-uvicorn app.main:app --reload --port 8000
+```powershell
+cd docker-optimizer
+pip install fastapi uvicorn
+python api.py
 ```
+
+API runs at `http://localhost:8000`. See `docker-optimizer/BACKEND_INTEGRATION.md` for endpoint details.
 
 ### Frontend (Vite + React)
 
-```sh
-cd optimizer/frontend
+```powershell
+cd frontend
 npm install
 npm run dev
 ```
 
-Open the Vite dev URL (typically `http://localhost:5173`). The frontend proxies API requests to `http://localhost:8000`.
+Open `http://localhost:5173`. API calls proxy to `http://localhost:8000` via `/api/*`.
+
+By default, `.env.development` uses demo data so the UI works without the backend. Set `VITE_USE_DEMO_DATA=false` and restart the dev server to hit the real API.
+
+### VS Code extension
+
+```powershell
+npm run compile
+```
+
+Press F5 in VS Code to launch the Extension Development Host. The sidebar webview loads `frontend/dist/` after `npm run build` in `frontend/`.
 
 ## Project layout
 
-- `optimizer/backend/` — FastAPI API, SQLite, YAML generation, simulated CI executor
-- `optimizer/frontend/` — React dashboard (impact graph, savings, approval workflow)
-- `optimizer/ai/` — OpenAI orchestrator (IntentParser, ImpactAnalyzer, PipelineOptimizer)
-- `optimizer/demo/` — Fake monorepo, Jira intents, and PR fixtures for the demo
+- `frontend/` — React webview panel (optimizer UI)
+- `docker-optimizer/` — Python 3-act suite + FastAPI (`/analyze`, `/optimize`, `/watch`)
+- `backend/` — Extension CLI backend (Python)
+- `src/` — VS Code extension host (TypeScript)

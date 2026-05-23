@@ -44,5 +44,3 @@ Thumbs.db
 # Logs
 *.log
 logs/
-
-# Note: optimizer/ai/cache/ is intentionally NOT ignored — committed cache files are the demo reliability fallback
