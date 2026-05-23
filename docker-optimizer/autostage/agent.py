@@ -1,8 +1,27 @@
 import google.generativeai as genai
 import os
+from pathlib import Path
+
+
+def load_env_file(env_path):
+    if not env_path.exists():
+        return
+
+    for line in env_path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+
+        key, value = stripped.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+load_env_file(Path(__file__).resolve().parents[1] / ".env")
 
 # Configuration
-genai.configure(api_key=os.environ.get("GOOGLE_API_KEY", "YOUR_API_KEY"))
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 def refactor_dockerfile(content, used_libs=None, bust_info=None):
@@ -11,6 +30,9 @@ def refactor_dockerfile(content, used_libs=None, bust_info=None):
     Receives Diagnosis from Act 1 and prepares the environment for Act 3 (Hot-Swap).
     """
     
+    if not GOOGLE_API_KEY:
+        return "Agent Error: GOOGLE_API_KEY is not set. Add it to docker-optimizer/.env."
+
     # 1. Prepare the Context for the AI
     libs_context = f"The source code only uses these libraries: {', '.join(used_libs) if used_libs else 'Not Scanned'}"
     bust_context = f"ACT 1 REPORT: The build currently breaks at: '{bust_info}'. This is our primary target for re-layering." if bust_info else ""
