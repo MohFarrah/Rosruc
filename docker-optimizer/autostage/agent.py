@@ -22,7 +22,7 @@ load_env_file(Path(__file__).resolve().parents[1] / ".env")
 GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 def refactor_dockerfile(content, used_libs=None, bust_info=None):
     """

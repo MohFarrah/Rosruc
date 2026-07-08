@@ -19,7 +19,7 @@ def load_env_file(env_path):
 load_env_file(Path(__file__).resolve().parents[1] / ".env")
 
 genai.configure(api_key=os.environ.get('GOOGLE_API_KEY', 'YOUR_API_KEY'))
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 def get_ai_analysis(status, dockerfile_content, busted_line=None):
     """

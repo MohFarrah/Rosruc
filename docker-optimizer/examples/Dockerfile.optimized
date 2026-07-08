@@ -1,0 +1,15 @@
+FROM python:3.9
+
+# BLOAT: Installing things we don't need (Tree-shaker should find these)
+RUN apt-get update && apt-get install -y git vim wget gcc
+
+WORKDIR /app
+
+# CACHE BUST: Copying everything before installing requirements
+# This is what causes the "one-hour" wait if requirements are large
+COPY . .
+
+RUN pip install -r requirements.txt
+
+# No reloader used here
+CMD ["python", "app.py"]
